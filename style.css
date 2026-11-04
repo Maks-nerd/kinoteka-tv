@@ -1,4 +1,60 @@
-html, body { margin: 0; width: 100%; height: 100%; background: #0b0c10; color: #ececf1; font: 28px/1.4 system-ui, sans-serif; }
-  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
-  img { width: 160px; height: 160px; border-radius: 36px; }
-  #msg { color: #9a9cab; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0b0c10; color: #ececf1; font: 28px/1.4 system-ui, sans-serif; }
+#splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
+#msg { color: #9a9cab; font-size: .8em; min-height: 1.4em; }
+:root { --accent: #e50914; }
+.loader { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.proj { width: 340px !important; }
+
+#shelf { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; opacity: 0; }
+#shelf.on { opacity: 1; }
+
+/* лоадер — как на полке */
+/* лоадер — кинопроектор: бобины с плёнкой крутятся, перфорация бежит, луч мерцает, в нём плывут пылинки, лампа светится */
+.proj { width: 220px; height: auto; overflow: visible; display: block; }
+.proj .shadow { fill: #000; opacity: .5; }
+.proj .floor { animation: proj-glow 2.4s ease-in-out infinite; }
+.proj .plate { fill: url(#kreel); stroke: #ffffff52; stroke-width: 1.5; }
+.proj .h { fill: url(#kfilm); stroke: #00000080; stroke-width: 1; }
+.proj .wound { fill: #24252c; stroke: #ffffff1a; stroke-width: 1; }
+.proj .hub { fill: #d7d8e0; }
+.proj .bolt { fill: #6b6d78; }
+.proj .shine { fill: none; stroke: #ffffffa6; stroke-width: 1.6; stroke-linecap: round; }
+.proj .r1 { transform-origin: 70px 50px; animation: spin 2.2s linear infinite; }
+.proj .r2 { transform-origin: 144px 46px; animation: spin 2.4s linear infinite; }
+.proj .strut { stroke: #2c2d35; stroke-width: 6; stroke-linecap: round; }
+.proj .film { fill: none; stroke: #1d1715; stroke-width: 8; stroke-linecap: round; }
+.proj .holes { fill: none; stroke: #ffffff52; stroke-width: 2.4; stroke-dasharray: 2 3.5; animation: proj-film .45s linear infinite; }
+.proj .body { fill: url(#kbody); stroke: #ffffff2e; stroke-width: 1.5; }
+.proj .trim { stroke: #ffffff4d; stroke-width: 1; stroke-linecap: round; }
+.proj .vent { stroke: #00000066; stroke-width: 3; stroke-linecap: round; }
+.proj .brandname { fill: #ffffff4d; font: 700 7.5px/1 system-ui, -apple-system, "Segoe UI", sans-serif; letter-spacing: 1.6px; }
+.proj .knob { fill: #2a2b33; stroke: #ffffff4a; stroke-width: 1.5; }
+.proj .knob-l { stroke: #ffffff70; stroke-width: 2; stroke-linecap: round; transform-origin: 170px 116px; animation: spin 2.4s linear infinite; }
+.proj .lamp-base { fill: #2a2b33; stroke: #ffffff33; stroke-width: 1; }
+.proj .lamp { fill: var(--accent); filter: drop-shadow(0 0 4px var(--accent)); animation: proj-lamp 1.6s ease-in-out infinite; }
+.proj .barrel { fill: url(#klens); stroke: #ffffff33; stroke-width: 1.5; }
+.proj .ring { fill: url(#klens); stroke: #ffffff66; stroke-width: 1.5; }
+.proj .halo { animation: proj-glow 2.4s ease-in-out infinite; }
+.proj .feet { stroke: #3a3c46; stroke-width: 4; stroke-linecap: round; }
+.proj .beam { animation: proj-beam 2.4s steps(1) infinite; }
+.proj .core { animation-duration: 1.7s; }
+.proj .dust { fill: #fff3d6; opacity: 0; animation: proj-dust 4.2s linear infinite; }
+@keyframes proj-film { to { stroke-dashoffset: -5.5; } }
+@keyframes proj-lamp { 50% { opacity: .35; } }
+@keyframes proj-glow { 50% { opacity: .7; } }
+@keyframes proj-beam { 0% { opacity: 1; } 12% { opacity: .72; } 16% { opacity: 1; } 47% { opacity: .84; } 51% { opacity: 1; } 78% { opacity: .66; } 81% { opacity: 1; } }
+@keyframes proj-dust { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: .9; } 100% { opacity: 0; transform: translate(60px, -10px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+/* подпись лоадера: тёплый кремовый в тон лучу, по ней пробегает блик */
+.loader > .muted { color: #d9cbb0; font-weight: 500; letter-spacing: .04em; }
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .loader .ltext { background: linear-gradient(90deg, #bfae8e 0%, #bfae8e 38%, #fff6df 50%, #bfae8e 62%, #bfae8e 100%);
+    background-size: 260% 100%; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+    animation: load-shine 2.6s linear infinite; }
+}
+@keyframes load-shine { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+/* точки как на полке игр: «» → «.» → «..» → «...», место под них зарезервировано — текст не прыгает */
+.loader .ldots::after { content: "…"; display: inline-block; width: 1.1em; text-align: left; overflow: hidden; vertical-align: bottom;
+  color: #d9cbb0; animation: ldots 1.2s steps(4, end) infinite; }
+@keyframes ldots { from { width: 0; } to { width: 1.1em; } }

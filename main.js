@@ -1,25 +1,36 @@
-  var msg = document.getElementById('msg');
-  msg.textContent = 'Шаг 2 — скрипт работает, открываю полку…';
+// Оболочка приложения «Кинотека» для Samsung Tizen: полка живёт на сервере и открыта здесь во встроенном окне на весь экран.
+// Оболочка остаётся под ней, чтобы по просьбе полки открывать внешние ссылки (HDRezka, TMDB) в браузере Samsung.
+var SHELF = 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv';
+var frame = document.getElementById('shelf'), msg = document.getElementById('msg');
 
-  // Оболочка приложения «Кинотека» для Samsung Tizen: сама полка живёт на сервере, приложение просто открывает её.
-  // Внутри приложения пульт работает как пульт: стрелки, ОК и «Назад» приходят странице нажатиями клавиш.
-  var SHELF = 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv';  // метка: полка знает, что открыта в приложении, а не в браузере
+try {
+  ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'ChannelUp', 'ChannelDown'].forEach(function (k) {
+    try { tizen.tvinputdevice.registerKey(k); } catch (e) { /* нет такой кнопки на пульте */ }
+  });
+} catch (e) { /* не телевизор */ }
+
+frame.addEventListener('load', function () {
+  frame.classList.add('on');
+  frame.focus();
+});
+// нажатия пульта — всегда в полку (после возврата из браузера фокус может остаться у оболочки)
+window.addEventListener('focus', function () { frame.focus(); });
+document.addEventListener('keydown', function () { frame.focus(); });
+
+// полка просит открыть ссылку — запускаем браузер Samsung
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (d.kino !== 'open' || !d.url) return;
   try {
-    ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'ChannelUp', 'ChannelDown'].forEach(function (k) {
-      try { tizen.tvinputdevice.registerKey(k); } catch (e) { /* нет такой кнопки на пульте */ }
-    });
-  } catch (e) { /* не телевизор */ }
+    var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
+    tizen.application.launchAppControl(ctl, null, function () {}, function (err) { msg.textContent = 'Браузер не открылся: ' + (err && err.message); });
+  } catch (err) { /* не телевизор */ }
+});
 
-  function go() {
-    msg.textContent = 'Шаг 3 — перехожу на ' + SHELF;
-    try { location.href = SHELF; } catch (e) { msg.textContent = 'Не открылось: ' + e; }
-    // если через 10 секунд мы всё ещё здесь — переход не пустили: показываем, что случилось
-    setTimeout(function () { msg.textContent = 'Шаг 4 — переход не случился за 10 секунд. ОК — попробовать ещё раз.'; }, 10000);
-  }
-  document.addEventListener('keydown', function (e) { if (e.keyCode === 13) go(); });
-  if (navigator.onLine === false) {
-    msg.textContent = 'Нет интернета — открою, как только появится';
-    window.addEventListener('online', go);
-  } else {
-    go();
-  }
+function go() { frame.src = SHELF; }
+if (navigator.onLine === false) {
+  msg.textContent = 'Нет интернета — открою, как только появится';
+  window.addEventListener('online', go);
+} else {
+  go();
+}
