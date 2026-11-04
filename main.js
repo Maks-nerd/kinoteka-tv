@@ -13,9 +13,11 @@ frame.addEventListener('load', function () {
   frame.classList.add('on');
   frame.focus();
 });
-// нажатия пульта — всегда в полку (после возврата из браузера фокус может остаться у оболочки)
-window.addEventListener('focus', function () { frame.focus(); });
-document.addEventListener('keydown', function () { frame.focus(); });
+// вернулись из браузера Samsung — нажатия пульта снова в полку. Только если фокус правда у оболочки:
+// иначе отберём его у поля ввода внутри полки (пароль, поиск) и печатать будет нельзя
+document.addEventListener('visibilitychange', function () {
+  if (!document.hidden && document.activeElement !== frame) frame.focus();
+});
 
 // полка просит открыть ссылку — запускаем браузер Samsung
 window.addEventListener('message', function (e) {
