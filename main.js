@@ -4,11 +4,16 @@ var SHELF = 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv';
 var frame = document.getElementById('shelf'), msg = document.getElementById('msg');
 var login = document.getElementById('login'), pw = document.getElementById('pw');
 
-try {
-  ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'ChannelUp', 'ChannelDown'].forEach(function (k) {
-    try { tizen.tvinputdevice.registerKey(k); } catch (e) { /* нет такой кнопки на пульте */ }
+// кнопки пульта, которые приложение забирает себе, — только пока оно на экране: ушли в браузер (HDRezka, TMDB) —
+// отпускаем, иначе браузер их не получает (каналами там листают страницу)
+var KEYS = ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'ChannelUp', 'ChannelDown'];
+function grabKeys(on) {
+  KEYS.forEach(function (k) {
+    try { if (on) tizen.tvinputdevice.registerKey(k); else tizen.tvinputdevice.unregisterKey(k); } catch (e) { /* не телевизор или нет такой кнопки */ }
   });
-} catch (e) { /* не телевизор */ }
+}
+grabKeys(true);
+document.addEventListener('visibilitychange', function () { grabKeys(!document.hidden); });
 
 frame.addEventListener('load', function () {
   frame.classList.add('on');
