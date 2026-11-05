@@ -58,3 +58,13 @@ html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background:
 .loader .ldots::after { content: "…"; display: inline-block; width: 1.1em; text-align: left; overflow: hidden; vertical-align: bottom;
   color: #d9cbb0; animation: ldots 1.2s steps(4, end) infinite; }
 @keyframes ldots { from { width: 0; } to { width: 1.1em; } }
+
+/* вход: поле пароля в самой оболочке — во встроенном окне клавиатура телевизора не появляется */
+#login { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  background: radial-gradient(ellipse at top, #2a1416 0%, #0b0c10 60%); }
+#login[hidden] { display: none; }
+.lg-title { font-size: 1.6em; font-weight: 700; }
+#login input, #login button { font: inherit; width: 520px; box-sizing: border-box; padding: .6em 1em; border-radius: 14px; border: 2px solid #2b2d36; background: #16171d; color: inherit; }
+#login button { background: #e50914; border-color: #e50914; color: #fff; font-weight: 700; }
+#login input:focus, #login button:focus { outline: 4px solid #fff; outline-offset: 3px; }
+#lg-err { color: #ff8a80; min-height: 1.4em; }
