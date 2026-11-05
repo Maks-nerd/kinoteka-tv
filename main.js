@@ -16,31 +16,52 @@ frame.addEventListener('load', function () {
 });
 // вернулись из браузера Samsung — нажатия пульта снова в полку. Только если фокус правда у оболочки:
 // иначе отберём его у поля ввода внутри полки (пароль, поиск) и печатать будет нельзя
+// фокус оказался у оболочки (в полке пропал элемент, на котором стояла рамка) — первое же нажатие возвращает его полке
+document.addEventListener('keydown', function () {
+  if (login.hidden && document.activeElement !== frame) frame.focus();
+});
 document.addEventListener('visibilitychange', function () {
   if (!document.hidden && login.hidden && document.activeElement !== frame) frame.focus();
 });
 
 // вход: экран входа полки просит пароль — показываем своё поле (в нём клавиатура телевизора работает) и передаём ей введённое
-function askPassword(error) {
+// поле ввода оболочки: и для пароля, и для поиска (во встроенном окне клавиатура телевизора не появляется)
+var asking = 'password';
+function ask(kind, value, error, label) {
+  asking = kind;
+  var search = kind === 'search';
+  document.getElementById('lg-title').textContent = search ? 'Поиск' : 'Вход в Кинотеку';
+  document.getElementById('lg-btn').textContent = search ? 'Найти' : 'Войти';
   document.getElementById('lg-err').textContent = error || '';
+  pw.type = search ? 'text' : 'password';
+  pw.placeholder = search ? (label || 'Название, актёр или франшиза') + ' — можно голосом 🎤' : 'Пароль';
+  pw.value = value || '';
   login.hidden = false;
-  pw.value = '';
   setTimeout(function () { pw.focus(); }, 200);
 }
-login.addEventListener('submit', function (e) {
-  e.preventDefault();
-  if (!pw.value) return;
-  frame.contentWindow.postMessage({ kino: 'password', value: pw.value }, '*');
+function askPassword(error) { ask('password', '', error); }
+function closeAsk() {
   pw.blur();
   login.hidden = true;
   frame.focus();
+}
+login.addEventListener('submit', function (e) {
+  e.preventDefault();
+  if (asking === 'password' && !pw.value) return;
+  frame.contentWindow.postMessage({ kino: asking === 'search' ? 'search-text' : 'password', value: pw.value }, '*');
+  closeAsk();
 });
+// «Назад» в поиске — закрыть поле, ничего не меняя
+document.addEventListener('keydown', function (e) {
+  if (!login.hidden && asking === 'search' && (e.keyCode === 10009 || e.key === 'Escape')) { e.preventDefault(); closeAsk(); }
+}, true);
 pw.addEventListener('keydown', function (e) { if (e.keyCode === 13 || e.keyCode === 65376) { e.preventDefault(); login.requestSubmit ? login.requestSubmit() : login.dispatchEvent(new Event('submit')); } });
 
 // полка просит открыть ссылку — запускаем браузер Samsung
 window.addEventListener('message', function (e) {
   var d = e.data || {};
   if (e.source === frame.contentWindow && d.kino === 'login') { askPassword(d.error); return; }
+  if (e.source === frame.contentWindow && d.kino === 'search') { ask('search', d.value, '', d.label); return; }
   if (d.kino !== 'open' || !d.url) return;
   try {
     var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
