@@ -3,6 +3,10 @@
 var SHELF = 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv';
 var frame = document.getElementById('shelf'), msg = document.getElementById('msg');
 var login = document.getElementById('login'), pw = document.getElementById('pw');
+var splash = document.getElementById('splash');
+// заставка «Загружаю полку» анимирована (проектор, луч с размытием): под открытой полкой телевизор продолжал её рисовать —
+// на LG это съедало половину плавности. Полка загрузилась — заставку убираем совсем
+function splashOff() { splash.style.display = 'none'; }  // kino-ready
 
 // кнопки пульта, которые приложение забирает себе, — только пока оно на экране: ушли в браузер (HDRezka, TMDB) —
 // отпускаем, иначе браузер их не получает (каналами там листают страницу)
@@ -65,6 +69,7 @@ pw.addEventListener('keydown', function (e) { if (e.keyCode === 13 || e.keyCode 
 // полка просит открыть ссылку — запускаем браузер Samsung
 window.addEventListener('message', function (e) {
   var d = e.data || {};
+  if (e.source === frame.contentWindow && (d.kino === 'ready' || d.kino === 'login')) splashOff();
   if (e.source === frame.contentWindow && d.kino === 'login') { askPassword(d.error); return; }
   if (e.source === frame.contentWindow && d.kino === 'search') { ask('search', d.value, '', d.label); return; }
   if (d.kino !== 'open' || !d.url) return;
