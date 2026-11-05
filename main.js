@@ -79,7 +79,22 @@ window.addEventListener('message', function (e) {
   } catch (err) { /* не телевизор */ }
 });
 
-function go() { frame.src = SHELF; }
+// полка отвечает «готово» (или просит пароль). Нет ответа за 15 с — сервер, видимо, перезапускался: пробуем ещё раз
+var waitReady = null, tries = 0;
+function go() {
+  frame.src = SHELF + (tries ? '&r=' + Date.now() : '');
+  clearTimeout(waitReady);
+  waitReady = setTimeout(function () {
+    tries++;
+    msg.textContent = 'Сервер не отвечает — пробую ещё раз (' + tries + ')';
+    splash.style.display = '';
+    go();
+  }, 15000);
+}
+window.addEventListener('message', function (e) {
+  var d = e.data || {};
+  if (e.source === frame.contentWindow && (d.kino === 'ready' || d.kino === 'login')) { clearTimeout(waitReady); tries = 0; msg.textContent = ''; }
+});
 if (navigator.onLine === false) {
   msg.textContent = 'Нет интернета — открою, как только появится';
   window.addEventListener('online', go);
