@@ -74,8 +74,15 @@ window.addEventListener('message', function (e) {
   if (e.source === frame.contentWindow && d.kino === 'search') { ask('search', d.value, '', d.label); return; }
   if (d.kino !== 'open' || !d.url) return;
   try {
+    // Tizen 10 (One UI Tizen): браузер теперь org.tizen.next-browser, и ссылка «без адресата» не находит, чем открыться
+    // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
     var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
-    tizen.application.launchAppControl(ctl, null, function () {}, function (err) { msg.textContent = 'Браузер не открылся: ' + (err && err.message); });
+    var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
+    (function next(i) {
+      tizen.application.launchAppControl(ctl, ids[i], function () {}, function (err) {
+        if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
+      });
+    })(0);
   } catch (err) { /* не телевизор */ }
 });
 
