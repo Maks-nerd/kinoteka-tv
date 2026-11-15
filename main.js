@@ -83,8 +83,8 @@ window.addEventListener('message', function (e) {
     // Tizen 10 (One UI Tizen): браузер теперь org.tizen.next-browser, и ссылка «без адресата» не находит, чем открыться
     // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
     // Закрытый браузер (а закрыт он или нет, приложению не видно) первую ссылку принимает, но тут же теряет.
-    // Поэтому первая ссылка — страница полки /wait: если браузер был открыт, она через 1,5 с сама переходит на сайт
-    // (в той же вкладке) и отмечается на полке. Не отметилась (браузер её потерял) — через 4 с шлём сайт напрямую.
+    // Поэтому первая ссылка — страница полки /wait: если браузер был открыт, она через 0,7 с сама переходит на сайт
+    // (в той же вкладке) и отмечается на полке. Полка скажет, что браузер её потерял, — шлём сайт напрямую.
     // Сайт так грузится один раз (двойная загрузка ломала оформление HDRezka). Google и HDRezka проверены на ТВ.
     // (таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml)
     var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
@@ -96,13 +96,22 @@ window.addEventListener('message', function (e) {
       tizen.application.launchAppControl(first, ids[i], function () {
         if (!known || !ids[i]) return;
         clearTimeout(resendT);
-        resendT = setTimeout(function () {
+        // спрашиваем полку раз в секунду: «seen» — страница сама перешла на сайт, всё; «lost» — браузер её потерял,
+        // шлём сайт напрямую; «wait» — страница ещё идёт через интернет, ждём. Через 12 с не дождались — шлём сайт.
+        var t0 = Date.now();
+        var poll = function () {
           var x = new XMLHttpRequest();
           x.open('GET', home + '/api/go-seen?id=' + id);
-          x.timeout = 4000;
-          x.onload = function () { try { if (JSON.parse(x.responseText).seen === false) tizen.application.launchAppControl(site, ids[i], null, null); } catch (e3) {} };
+          x.timeout = 3000;
+          x.onload = function () {
+            var st = ''; try { st = JSON.parse(x.responseText).state; } catch (e3) {}
+            if (st === 'lost' || (st === 'wait' && Date.now() - t0 > 12000)) tizen.application.launchAppControl(site, ids[i], null, null);
+            else if (st === 'wait') resendT = setTimeout(poll, 1000);
+          };
+          x.onerror = x.ontimeout = function () { if (Date.now() - t0 < 12000) resendT = setTimeout(poll, 1000); };
           x.send();
-        }, 4000);
+        };
+        resendT = setTimeout(poll, 2000);
       }, function (err) {
         if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
       });
