@@ -82,20 +82,36 @@ window.addEventListener('message', function (e) {
   try {
     // Tizen 10 (One UI Tizen): браузер теперь org.tizen.next-browser, и ссылка «без адресата» не находит, чем открыться
     // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
-    var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
+    // ссылка идёт через полку (/go): так видно, открыл ли её браузер. Только что запущенный браузер ссылку
+    // иногда теряет — тогда через 3,5 с отдаём её ещё раз; если открыл — второй раз не шлём (иначе страница
+    // перезагружалась посреди загрузки, и у HDRezka ломалось оформление)
+    // (адрес /go — через интернет: браузер Samsung http-ссылки не открывает, только https)
+    var go = SHELVES[1].split('/?')[0], lan = /^https:\/\/([a-z0-9-]+\.)*(rezka\.ag|google\.com|youtube\.com|themoviedb\.org|justwatch\.com|uakino\.best)(\/|$)/.test(d.url);  // те же сайты, что пускает /go
+    var id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var url = lan ? go + '/go?id=' + id + '&u=' + encodeURIComponent(d.url) : d.url;
+    var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', url);
     var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
-    var send = function () {
-      (function next(i) {
-        tizen.application.launchAppControl(ctl, ids[i], function () {
-          // браузер на холодном старте ссылку теряет — когда он уже на экране, отдаём её ещё раз
-          // (таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml)
-          if (ids[i]) { clearTimeout(resendT); resendT = setTimeout(function () { tizen.application.launchAppControl(ctl, ids[i], null, null); }, 3500); }
-        }, function (err) {
-          if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
-        });
-      })(0);
+    var again = function (appId) {
+      tizen.application.launchAppControl(ctl, appId, null, null);
     };
-    send();
+    (function next(i) {
+      tizen.application.launchAppControl(ctl, ids[i], function () {
+        // таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml
+        if (!ids[i]) return;
+        clearTimeout(resendT);
+        resendT = setTimeout(function () {
+          if (!lan) return again(ids[i]);
+          var x = new XMLHttpRequest();
+          x.open('GET', go + '/api/go-seen?id=' + id);
+          x.timeout = 3000;
+          x.onload = function () { try { if (!JSON.parse(x.responseText).seen) again(ids[i]); } catch (e3) { again(ids[i]); } };
+          x.onerror = x.ontimeout = function () { again(ids[i]); };
+          x.send();
+        }, 3500);
+      }, function (err) {
+        if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
+      });
+    })(0);
   } catch (err) { /* не телевизор */ }
 });
 
