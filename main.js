@@ -81,11 +81,21 @@ window.addEventListener('message', function (e) {
     // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
     var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
     var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
-    (function next(i) {
-      tizen.application.launchAppControl(ctl, ids[i], function () {}, function (err) {
-        if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
-      });
-    })(0);
+    var send = function (again) {
+      (function next(i) {
+        tizen.application.launchAppControl(ctl, ids[i], function () {
+          // браузер был закрыт: при холодном старте он открывает домашнюю страницу и ссылку теряет —
+          // когда он уже поднялся, отдаём ссылку ещё раз (запущенный браузер её открывает)
+          if (again && ids[i]) setTimeout(function () { tizen.application.launchAppControl(ctl, ids[i], null, null); }, 3500);
+        }, function (err) {
+          if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
+        });
+      })(0);
+    };
+    tizen.application.getAppsContext(function (list) {
+      var running = list.some(function (c) { return /browser$/.test(c.appId) && /^org\.tizen\./.test(c.appId); });
+      send(!running);
+    }, function () { send(false); });
   } catch (err) { /* не телевизор */ }
 });
 
