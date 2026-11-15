@@ -1,6 +1,9 @@
 // Оболочка приложения «Кинотека» для Samsung Tizen: полка живёт на сервере и открыта здесь во встроенном окне на весь экран.
 // Оболочка остаётся под ней, чтобы по просьбе полки открывать внешние ссылки (HDRezka, TMDB) в браузере Samsung.
-var SHELF = 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv';
+// сначала — напрямую по домашней сети (сервер Lenovo пробрасывает полку только телевизорам): запуск за пару секунд;
+// не ответила — через интернет (Tailscale Funnel), как раньше
+var SHELVES = ['http://192.168.0.59:8780/?app=tv', 'https://claude-vm.tail65a20f.ts.net:10000/?app=tv'];
+var SHELF = SHELVES[0];
 var frame = document.getElementById('shelf'), msg = document.getElementById('msg');
 var login = document.getElementById('login'), pw = document.getElementById('pw');
 var splash = document.getElementById('splash');
@@ -89,6 +92,7 @@ window.addEventListener('message', function (e) {
 // полка отвечает «готово» (или просит пароль). Нет ответа за 15 с — сервер, видимо, перезапускался: пробуем ещё раз
 var waitReady = null, tries = 0;
 function go() {
+  SHELF = SHELVES[tries % SHELVES.length];  // домашний адрес не ответил — следующая попытка через интернет, и так по кругу
   frame.src = SHELF + (tries ? '&r=' + Date.now() : '');
   clearTimeout(waitReady);
   waitReady = setTimeout(function () {
@@ -96,7 +100,7 @@ function go() {
     msg.textContent = 'Сервер не отвечает — пробую ещё раз (' + tries + ')';
     splash.style.display = '';
     go();
-  }, 15000);
+  }, SHELF === SHELVES[0] ? 8000 : 15000);  // дома полка отвечает за 1–2 с — долго ждать не нужно
 }
 window.addEventListener('message', function (e) {
   var d = e.data || {};
