@@ -104,8 +104,9 @@ window.addEventListener('message', function (e) {
           var x = new XMLHttpRequest();
           x.open('GET', go + '/api/go-seen?id=' + id);
           x.timeout = 3000;
-          x.onload = function () { try { if (!JSON.parse(x.responseText).seen) again(ids[i]); } catch (e3) { again(ids[i]); } };
-          x.onerror = x.ontimeout = function () { again(ids[i]); };
+          // повторяем, только если полка точно ответила «не дошла»; нет ответа — не повторяем
+          // (пока браузер на экране, сеть у Кинотеки в фоне может стоять — слепой повтор открывал ссылку дважды)
+          x.onload = function () { try { if (JSON.parse(x.responseText).seen === false) again(ids[i]); } catch (e3) {} };
           x.send();
         }, 3500);
       }, function (err) {
