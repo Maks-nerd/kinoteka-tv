@@ -82,33 +82,27 @@ window.addEventListener('message', function (e) {
   try {
     // Tizen 10 (One UI Tizen): браузер теперь org.tizen.next-browser, и ссылка «без адресата» не находит, чем открыться
     // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
-    // ссылка идёт через полку (/go): так видно, открыл ли её браузер. Только что запущенный браузер ссылку
-    // иногда теряет — тогда через 3,5 с отдаём её ещё раз; если открыл — второй раз не шлём (иначе страница
-    // перезагружалась посреди загрузки, и у HDRezka ломалось оформление)
-    // (адрес /go — через интернет: браузер Samsung http-ссылки не открывает, только https)
-    var go = SHELVES[1].split('/?')[0], lan = /^https:\/\/([a-z0-9-]+\.)*(rezka\.ag|google\.com|youtube\.com|themoviedb\.org|justwatch\.com|uakino\.best)(\/|$)/.test(d.url);  // те же сайты, что пускает /go
-    var id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    var url = lan ? go + '/go?id=' + id + '&u=' + encodeURIComponent(d.url) : d.url;
-    var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', url);
+    // Закрытый браузер (а закрыт он или нет, приложению не видно) первую ссылку принимает, но тут же теряет.
+    // Поэтому первая ссылка — страница полки /wait: если браузер был открыт, она через 1,5 с сама переходит на сайт
+    // (в той же вкладке) и отмечается на полке. Не отметилась (браузер её потерял) — через 4 с шлём сайт напрямую.
+    // Сайт так грузится один раз (двойная загрузка ломала оформление HDRezka). Google и HDRezka проверены на ТВ.
+    // (таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml)
     var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
-    var again = function (appId) {
-      tizen.application.launchAppControl(ctl, appId, null, null);
-    };
+    var view = function (u) { return new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', u); };
+    var home = SHELVES[1].split('/?')[0], id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    var known = /^https:\/\/([a-z0-9-]+\.)*(rezka\.ag|google\.com|youtube\.com|themoviedb\.org|justwatch\.com|uakino\.best)(\/|$)/.test(d.url);  // те же сайты, что пускает полка
+    var site = view(d.url), first = known ? view(home + '/wait?id=' + id + '&u=' + encodeURIComponent(d.url)) : site;
     (function next(i) {
-      tizen.application.launchAppControl(ctl, ids[i], function () {
-        // таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml
-        if (!ids[i]) return;
+      tizen.application.launchAppControl(first, ids[i], function () {
+        if (!known || !ids[i]) return;
         clearTimeout(resendT);
         resendT = setTimeout(function () {
-          if (!lan) return again(ids[i]);
           var x = new XMLHttpRequest();
-          x.open('GET', go + '/api/go-seen?id=' + id);
-          x.timeout = 3000;
-          // повторяем, только если полка точно ответила «не дошла»; нет ответа — не повторяем
-          // (пока браузер на экране, сеть у Кинотеки в фоне может стоять — слепой повтор открывал ссылку дважды)
-          x.onload = function () { try { if (JSON.parse(x.responseText).seen === false) again(ids[i]); } catch (e3) {} };
+          x.open('GET', home + '/api/go-seen?id=' + id);
+          x.timeout = 4000;
+          x.onload = function () { try { if (JSON.parse(x.responseText).seen === false) tizen.application.launchAppControl(site, ids[i], null, null); } catch (e3) {} };
           x.send();
-        }, 3500);
+        }, 4000);
       }, function (err) {
         if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
       });
