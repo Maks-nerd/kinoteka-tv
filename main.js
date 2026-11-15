@@ -70,6 +70,9 @@ document.addEventListener('keydown', function (e) {
 pw.addEventListener('keydown', function (e) { if (e.keyCode === 13 || e.keyCode === 65376) { e.preventDefault(); login.requestSubmit ? login.requestSubmit() : login.dispatchEvent(new Event('submit')); } });
 
 // полка просит открыть ссылку — запускаем браузер Samsung
+var resendT = null;
+// вернулись в Кинотеку раньше, чем ушла повторная ссылка, — браузер больше не дёргаем
+document.addEventListener('visibilitychange', function () { if (!document.hidden) clearTimeout(resendT); });
 window.addEventListener('message', function (e) {
   var d = e.data || {};
   if (e.source === frame.contentWindow && (d.kino === 'ready' || d.kino === 'login')) splashOff();
@@ -81,21 +84,18 @@ window.addEventListener('message', function (e) {
     // (No matched application found) — называем браузер явно: новый, старый, а потом уже «кто угодно»
     var ctl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/view', d.url);
     var ids = ['org.tizen.next-browser', 'org.tizen.browser', null];
-    var send = function (again) {
+    var send = function () {
       (function next(i) {
         tizen.application.launchAppControl(ctl, ids[i], function () {
-          // браузер был закрыт: при холодном старте он открывает домашнюю страницу и ссылку теряет —
-          // когда он уже поднялся, отдаём ссылку ещё раз (запущенный браузер её открывает)
-          if (again && ids[i]) setTimeout(function () { tizen.application.launchAppControl(ctl, ids[i], null, null); }, 3500);
+          // браузер на холодном старте ссылку теряет — когда он уже на экране, отдаём её ещё раз
+          // (таймер идёт и пока Кинотека в фоне: background-support="enable" в config.xml)
+          if (ids[i]) { clearTimeout(resendT); resendT = setTimeout(function () { tizen.application.launchAppControl(ctl, ids[i], null, null); }, 3500); }
         }, function (err) {
           if (i + 1 < ids.length) next(i + 1); else msg.textContent = 'Браузер не открылся: ' + (err && err.message);
         });
       })(0);
     };
-    tizen.application.getAppsContext(function (list) {
-      var running = list.some(function (c) { return /browser$/.test(c.appId) && /^org\.tizen\./.test(c.appId); });
-      send(!running);
-    }, function () { send(false); });
+    send();
   } catch (err) { /* не телевизор */ }
 });
 
